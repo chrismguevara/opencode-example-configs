@@ -1,0 +1,169 @@
+// Global OpenCode configuration (installed/symlinked to ~/.config/opencode/opencode.jsonc).
+//
+// Validated against OpenCode 1.18.32 (packages/core/src/v1/config/*.ts).
+// See docs/VALIDATION.md for the schema notes and docs/MODELS.md for model choices.
+//
+// Model IDs below are the exact IDs exposed by `opencode models` for the `openai` provider.
+// The `general` agent uses a placeholder until you pick a GPT-OSS-120B provider
+// (see docs/MODELS.md, "GPT-OSS-120B" and scripts/check-models.sh).
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // ---------------------------------------------------------------------------
+  // Models
+  // ---------------------------------------------------------------------------
+  // Primary model for primary agents that do not set their own model.
+  "model": "openai/gpt-5.6-terra",
+  // Small model for cheap internal tasks (title generation etc.).
+  "small_model": "openai/gpt-5.6-luna",
+  // Agent selected when opencode starts. Must be a primary agent.
+  "default_agent": "build",
+  // One level of delegation: primary -> subagent, never subagent -> subagent.
+  // (1 is also the OpenCode default; it is set explicitly so the intent is visible.)
+  "subagent_depth": 1,
+
+  // ---------------------------------------------------------------------------
+  // Global permissions (apply to every agent unless the agent overrides them).
+  // Rules are matched as wildcards; the LAST matching rule wins, so "*" goes first.
+  // ---------------------------------------------------------------------------
+  "permission": {
+    // No general-purpose web search anywhere.
+    "websearch": "deny",
+    // Web fetch is off by default; build and scout re-enable it below.
+    "webfetch": "deny",
+    // Agent Skills load without prompting.
+    "skill": "allow",
+    // Anything outside the project worktree needs confirmation.
+    "external_directory": "ask",
+    "bash": {
+      "*": "ask",
+      "git status": "allow",
+      "git status *": "allow",
+      "git diff": "allow",
+      "git diff *": "allow",
+      "git log": "allow",
+      "git log *": "allow",
+      "git show": "allow",
+      "git show *": "allow"
+    }
+  },
+
+  // ---------------------------------------------------------------------------
+  // Agents
+  // ---------------------------------------------------------------------------
+  // `reasoningEffort` and `textVerbosity` are not first-class schema keys: OpenCode
+  // folds unknown agent keys into `options` and passes them to the provider
+  // (documented under "Additional" in https://opencode.ai/docs/agents).
+  // `browser` and `gitlab` are defined as Markdown agents in ./agents/.
+  "agent": {
+    "build": {
+      "description": "Lead engineer responsible for architecture, implementation, delegation, testing, integration, and verification.",
+      "mode": "primary",
+      "model": "openai/gpt-5.6-terra",
+      "reasoningEffort": "high",
+      "textVerbosity": "low",
+      "permission": {
+        "edit": "allow",
+        "websearch": "deny",
+        // The lead may fetch explicitly supplied documentation URLs.
+        "webfetch": "allow",
+        // Only these subagents may be launched (matched against the subagent name).
+        "task": {
+          "*": "deny",
+          "explore": "allow",
+          "scout": "allow",
+          "general": "allow",
+          "browser": "allow",
+          "gitlab": "allow"
+        }
+      }
+    },
+
+    // Built-in explore agent, re-pointed at Luna and locked down.
+    // (The built-in defaults allow bash/webfetch/websearch; these rules override them.)
+    "explore": {
+      "description": "Fast read-only codebase exploration. Locate files, symbols, callers, dependencies, and implementation patterns. Ask for 'quick', 'medium', or 'very thorough' searches and request file/line references.",
+      "mode": "subagent",
+      "model": "openai/gpt-5.6-luna",
+      "reasoningEffort": "low",
+      "textVerbosity": "low",
+      "steps": 8,
+      "permission": {
+        "edit": "deny",
+        "bash": "deny",
+        "task": "deny",
+        "websearch": "deny",
+        "webfetch": "deny"
+      }
+    },
+
+    // Read-only dependency / documentation researcher.
+    "scout": {
+      "description": "Read-only dependency and documentation research. Inspect installed library source, APIs, local references, and explicitly supplied documentation URLs. Returns version-aware, concise findings.",
+      "mode": "subagent",
+      "model": "openai/gpt-5.6-luna",
+      "reasoningEffort": "medium",
+      "textVerbosity": "low",
+      "steps": 12,
+      "prompt": "{file:./prompts/scout.md}",
+      "permission": {
+        "edit": "deny",
+        "task": "deny",
+        "websearch": "deny",
+        "webfetch": "allow",
+        // Narrow, read-only package/toolchain introspection only.
+        "bash": {
+          "*": "deny",
+          "go version": "allow",
+          "go doc *": "allow",
+          "go list *": "allow",
+          "node --version": "allow",
+          "npm ls *": "allow",
+          "npm view *": "allow",
+          "pnpm ls *": "allow",
+          "pnpm why *": "allow"
+        }
+      }
+    },
+
+    // Built-in general agent, re-pointed at GPT-OSS-120B and made read-only.
+    "general": {
+      "description": "Read-only general-purpose worker for bounded analysis, logs, repetitive transformations, and independent technical investigations. Not a coding driver.",
+      "mode": "subagent",
+      // TODO: replace with the GPT-OSS-120B model ID of the provider you use, e.g.
+      //   openrouter/openai/gpt-oss-120b, groq/openai/gpt-oss-120b, cerebras/gpt-oss-120b,
+      //   fireworks-ai/accounts/fireworks/models/gpt-oss-120b, togetherai/openai/gpt-oss-120b
+      // Run scripts/check-models.sh to list the IDs your configured providers expose.
+      "model": "REPLACE_WITH_GPT_OSS_120B_MODEL_ID",
+      "steps": 12,
+      "prompt": "{file:./prompts/general.md}",
+      "permission": {
+        "edit": "deny",
+        "bash": "ask",
+        "task": "deny",
+        "websearch": "deny",
+        "webfetch": "deny"
+      }
+    },
+
+    // Hidden system agents: keep them on the cheap model.
+    "compaction": {
+      "model": "openai/gpt-5.6-luna"
+    },
+    "title": {
+      "model": "openai/gpt-5.6-luna"
+    },
+    "summary": {
+      "model": "openai/gpt-5.6-luna"
+    }
+  },
+
+  // ---------------------------------------------------------------------------
+  // Context compaction
+  // ---------------------------------------------------------------------------
+  "compaction": {
+    "auto": true,
+    "prune": true,
+    "reserved": 10000
+  }
+}

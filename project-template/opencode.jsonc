@@ -1,0 +1,63 @@
+// Project-level OpenCode configuration.
+//
+// Copy this file to the root of a project (see scripts/install-project-template.sh).
+// It is MERGED with the global ~/.config/opencode/opencode.jsonc: models, agents,
+// and permissions come from the global config; only project-level overrides live here.
+//
+// Validated against OpenCode 1.18.32 (docs/VALIDATION.md).
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // ---------------------------------------------------------------------------
+  // Formatters (run automatically after OpenCode writes or edits a file)
+  // ---------------------------------------------------------------------------
+  // Formatters are disabled unless this key is present. An object keeps the
+  // built-ins enabled with the overrides below.
+  "formatter": {
+    // This project uses Oxfmt, not Prettier.
+    "prettier": {
+      "disabled": true
+    },
+    // Built-in oxfmt support is experimental in 1.18 (needs an env flag), so the
+    // command is given explicitly; a custom command bypasses the experimental gate.
+    // The project must have `oxfmt` in its devDependencies (any package manager);
+    // `npx --no-install` never downloads anything.
+    "oxfmt": {
+      "command": ["npx", "--no-install", "oxfmt", "--write", "$FILE"],
+      "extensions": [".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts"]
+    },
+    // Go: gofmt in place (same as the built-in; listed explicitly for clarity).
+    "gofmt": {
+      "command": ["gofmt", "-w", "$FILE"],
+      "extensions": [".go"]
+    }
+  },
+
+  // ---------------------------------------------------------------------------
+  // Generated / vendored directories: never edit them (and therefore never
+  // format them). OpenCode has no formatter-level ignore list; edit permissions
+  // are the supported way to fence these paths off.
+  // ---------------------------------------------------------------------------
+  "permission": {
+    "edit": {
+      "*": "allow",
+      "**/node_modules/**": "deny",
+      "**/dist/**": "deny",
+      "**/.next/**": "deny",
+      "**/coverage/**": "deny",
+      "**/.git/**": "deny"
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Optional project overrides (uncomment as needed)
+  // ---------------------------------------------------------------------------
+  // "instructions": ["docs/CONTRIBUTING.md", "packages/*/AGENTS.md"],
+  // "agent": {
+  //   "build": {
+  //     "permission": {
+  //       "bash": { "pnpm test *": "allow", "go test *": "allow" }
+  //     }
+  //   }
+  // }
+}

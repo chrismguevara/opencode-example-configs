@@ -1,0 +1,9 @@
+# Backups created by scripts/install.sh / install-project-template.sh
+*.bak.*
+# Local tooling
+node_modules/
+.DS_Store
+# Never commit credentials
+*.env
+.env.*
+auth.json
